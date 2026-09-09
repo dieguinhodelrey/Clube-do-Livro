@@ -1,0 +1,318 @@
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --blue: #29479f;
+    --blue-dark: #203a87;
+    --light-blue: #f0f3fb;
+    --babygreen: #8CFF9E;
+    --babyblue: #a4c6f3;
+    --text: #17213d;
+    --border: #e3e7f0;
+    --muted: #7c879e;
+}
+
+html,
+body {
+    margin: 0;
+    min-height: 100%;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #ffffff;
+    color: var(--text);
+}
+
+
+
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+
+    width: 250px;
+    height: 100vh;
+
+    padding: 28px 20px;
+
+    display: flex;
+    flex-direction: column;
+
+    background: #ffffff;
+    border-right: 1px solid var(--border);
+
+    z-index: 100;
+}
+
+
+
+
+.sidebar-logo {
+    width: 100%;
+
+    display: flex;
+    justify-content: center;
+
+    margin-bottom: 40px;
+}
+
+.sidebar-logo img {
+    width: 185px;
+    height: auto;
+
+    display: block;
+
+    object-fit: contain;
+}
+
+
+
+.add-book-button {
+    width: 100%;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    margin-bottom: 25px;
+
+    border: none;
+    border-radius: 8px;
+
+    background: var(--babyblue);
+    color: var(--blue-dark);
+
+    font-size: 15px;
+    font-weight: 700;
+    
+
+    cursor: pointer;
+
+    transition: background 0.2s ease;
+}
+
+.add-book-button:hover {
+    background: var(--babygreen);
+}
+
+.add-icon {
+    font-size: 27px;
+    font-weight: 400;
+    line-height: 1;
+}
+
+
+
+.sidebar-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sidebar-item {
+    width: 100%;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 14px;
+
+    padding: 0 18px;
+
+    border-radius: 8px;
+
+    color: var(--blue);
+    text-decoration: none;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-item:hover {
+    background: var(--light-blue);
+}
+
+.sidebar-item.active {
+    background: var(--blue);
+    color: #ffffff;
+}
+
+
+
+
+.sidebar-icon {
+    width: 24px;
+    height: 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-icon img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+}
+
+
+
+.sidebar-bottom {
+    margin-top: auto;
+}
+
+
+
+
+.profile-button {
+    width: 100%;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    border: 1px solid var(--blue);
+    border-radius: 7px;
+
+    background: #ffffff;
+    color: var(--blue);
+
+    font-size: 15px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+
+
+
+.main {
+    width: calc(100% - 250px);
+    min-height: 100vh;
+
+    margin-left: 250px;
+
+    padding-left: 40px;
+}
+
+
+
+
+.content {
+    width: min(1000px, calc(100% - 80px));
+
+    margin: 0 auto;
+
+    padding-top: 55px;
+}
+
+
+
+.page-header {
+    margin-bottom: 28px;
+}
+
+.page-header h1 {
+    margin: 0;
+
+    font-size: 34px;
+    font-weight: 700;
+}
+
+
+
+
+.empty-state {
+    min-height: 180px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    padding: 30px;
+
+    text-align: center;
+
+    background: #f7f9fd;
+    border: 1px solid #dce3f2;
+    border-radius: 8px;
+}
+
+.empty-state h2 {
+    margin: 0 0 8px;
+
+    font-size: 20px;
+}
+
+.empty-state p {
+    margin: 0;
+
+    color: var(--muted);
+}
+
+
+/* responsivel*/
+
+@media (max-width: 700px) {
+
+    .sidebar {
+        width: 78px;
+        padding: 22px 10px;
+    }
+
+    .sidebar-logo {
+        margin-bottom: 35px;
+    }
+
+    .sidebar-logo img {
+        width: 48px;
+    }
+
+    .add-book-button {
+        padding: 0;
+    }
+
+    .add-book-button span:not(.add-icon) {
+        display: none;
+    }
+
+    .sidebar-item {
+        justify-content: center;
+        padding: 0;
+    }
+
+    .sidebar-item span:not(.sidebar-icon) {
+        display: none;
+    }
+
+    .profile-button {
+        padding: 0;
+    }
+
+    .profile-button span:last-child {
+        display: none;
+    }
+
+    .main {
+        width: calc(100% - 78px);
+        margin-left: 78px;
+        padding-left: 15px;
+    }
+
+    .content {
+        width: calc(100% - 30px);
+        padding-top: 35px;
+    }
+}
