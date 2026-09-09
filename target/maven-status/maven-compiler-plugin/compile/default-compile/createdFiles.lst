@@ -1,0 +1,11 @@
+br\unisinos\uni4read\repository\FeedActivityRepository.class
+br\unisinos\uni4read\entity\Book.class
+br\unisinos\uni4read\entity\ReactionType.class
+br\unisinos\uni4read\repository\ReactionRepository.class
+br\unisinos\uni4read\entity\ReadingStatus.class
+br\unisinos\uni4read\entity\User.class
+br\unisinos\uni4read\Uni4readApplication.class
+br\unisinos\uni4read\entity\Reaction.class
+br\unisinos\uni4read\repository\BookRepository.class
+br\unisinos\uni4read\entity\FeedActivity.class
+br\unisinos\uni4read\repository\UserRepository.class
