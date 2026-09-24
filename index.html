@@ -69,22 +69,94 @@
 
 
 
-    <main class="main">
+<main class="main">
+    <section class="content">
+        <div class="page-header">
+            <h1>Feed</h1>
+        </div>
 
-        <section class="content">
+        <div class="feed"></div>
+    </section>
+</main>
 
-            <div class="page-header">
-                <h1>Feed</h1>
+<div class="modal-overlay" id="addBookOverlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Adicionar livro</h2>
+            <button class="modal-close" id="addBookClose" type="button">✕</button>
+        </div>
+
+        <form id="addBookForm">
+
+            <label class="field">
+                <span>Título do livro</span>
+                <input type="text" id="fieldTitulo" name="titulo" placeholder="Ex: O Hobbit" required>
+            </label>
+
+            <label class="field">
+                <span>Autor</span>
+                <input type="text" id="fieldAutor" name="autor" placeholder="Ex: J. R. R. Tolkien" required>
+            </label>
+
+            <label class="field">
+                <span>Status</span>
+                <select id="fieldStatus" name="status">
+                    <option value="lendo">Lendo</option>
+                    <option value="lido">Lido</option>
+                </select>
+            </label>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" id="addBookCancel">Cancelar</button>
+                <button type="submit" class="btn-primary">Adicionar</button>
             </div>
 
-            <div class="empty-state">
-                <h2>Nenhum livro por aqui</h2>
-                <p>Adicione um livro para começar a montar seu feed.</p>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="statusOverlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Alterar status</h2>
+            <button class="modal-close" id="statusClose" type="button">✕</button>
+        </div>
+
+        <div class="status-options">
+
+            <button type="button" class="status-option" id="statusLendo" data-status="lendo">
+                <span class="status-option-icon">📖</span>
+                <span>Lendo</span>
+            </button>
+
+            <button type="button" class="status-option" id="statusLido" data-status="lido">
+                <span class="status-option-icon">✅</span>
+                <span>Lido</span>
+            </button>
+
+        </div>
+
+        <div class="rating-section" id="ratingSection">
+            <span class="field-label">Sua avaliação</span>
+
+            <div class="star-picker" id="starPicker">
+                <button type="button" class="star-button" data-value="1">★</button>
+                <button type="button" class="star-button" data-value="2">★</button>
+                <button type="button" class="star-button" data-value="3">★</button>
+                <button type="button" class="star-button" data-value="4">★</button>
+                <button type="button" class="star-button" data-value="5">★</button>
             </div>
+        </div>
 
-        </section>
+        <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="statusCancel">Cancelar</button>
+            <button type="button" class="btn-primary" id="statusConfirm">Salvar</button>
+        </div>
 
-    </main>
+    </div>
+</div>
+
+<script src="script.js"></script>
 
 </body>
 
