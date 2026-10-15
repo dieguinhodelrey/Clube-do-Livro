@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import br.unisinos.uni4read.dto.AuthResponseDTO;
 import br.unisinos.uni4read.dto.LoginRequestDTO;
@@ -24,7 +25,8 @@ import jakarta.validation.Valid;
 @Validated
 public class AuthController {
 
-    private static final String REFRESH_COOKIE = "uni4read_refresh";
+    private static final String REFRESH_COOKIE = "uni4read_refresh_v2";
+    private static final String LEGACY_REFRESH_COOKIE = "uni4read_refresh";
 
     private final AuthService authService;
 
@@ -45,7 +47,11 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponseDTO> refresh(
             @CookieValue(value = REFRESH_COOKIE, required = false) String refreshToken) {
-        return sessionResponse(authService.refresh(refreshToken));
+        try {
+            return sessionResponse(authService.refresh(refreshToken));
+        } catch (ResponseStatusException exception) {
+            throw new InvalidRefreshTokenException(exception);
+        }
     }
 
     @GetMapping("/me")
@@ -60,12 +66,14 @@ public class AuthController {
         authService.logout(refreshToken);
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, clearLegacyRefreshCookie().toString())
                 .build();
     }
 
     private ResponseEntity<AuthResponseDTO> sessionResponse(AuthService.AuthSession session) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie(session.refreshToken()).toString())
+                .header(HttpHeaders.SET_COOKIE, clearLegacyRefreshCookie().toString())
                 .body(session.response());
     }
 
@@ -74,7 +82,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(false)
                 .sameSite("Lax")
-                .path("/api/auth")
+                .path("/")
                 .maxAge(7 * 24 * 60 * 60)
                 .build();
     }
@@ -84,8 +92,39 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(false)
                 .sameSite("Lax")
+                .path("/")
+                .maxAge(0)
+                .build();
+    }
+
+    private ResponseCookie clearLegacyRefreshCookie() {
+        return ResponseCookie.from(LEGACY_REFRESH_COOKIE, "")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
                 .path("/api/auth")
                 .maxAge(0)
                 .build();
+    }
+
+    @org.springframework.web.bind.annotation.ExceptionHandler(InvalidRefreshTokenException.class)
+    ResponseEntity<Void> invalidRefreshToken(InvalidRefreshTokenException exception) {
+        return ResponseEntity.status(exception.getCauseException().getStatusCode())
+                .header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, clearLegacyRefreshCookie().toString())
+                .build();
+    }
+
+    private static class InvalidRefreshTokenException extends RuntimeException {
+        private final ResponseStatusException causeException;
+
+        private InvalidRefreshTokenException(ResponseStatusException causeException) {
+            super(causeException);
+            this.causeException = causeException;
+        }
+
+        private ResponseStatusException getCauseException() {
+            return causeException;
+        }
     }
 }
