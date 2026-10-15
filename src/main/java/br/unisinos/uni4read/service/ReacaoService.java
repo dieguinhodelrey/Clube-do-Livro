@@ -31,13 +31,13 @@ public class ReacaoService {
     }
 
     @Transactional
-    public ReacaoDTO alternar(UUID activityId, ReacaoRequestDTO request) {
+    public ReacaoDTO alternar(UUID activityId, ReacaoRequestDTO request, UUID userId) {
         FeedActivity activity = feedActivityRepository.findById(activityId)
                 .orElseThrow(() -> new IllegalArgumentException("Atividade nao encontrada"));
-        userRepository.findById(request.userId())
+        userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado"));
 
-        Reaction reaction = reactionRepository.findByActivityIdAndUserId(activityId, request.userId()).orElse(null);
+        Reaction reaction = reactionRepository.findByActivityIdAndUserId(activityId, userId).orElse(null);
         if (reaction != null && reaction.getType() == request.type()) {
             reactionRepository.delete(reaction);
         } else if (reaction != null) {
@@ -46,12 +46,12 @@ public class ReacaoService {
         } else {
             Reaction newReaction = new Reaction();
             newReaction.setActivity(activity);
-            newReaction.setUser(userRepository.getReferenceById(request.userId()));
+            newReaction.setUser(userRepository.getReferenceById(userId));
             newReaction.setType(request.type());
             reactionRepository.save(newReaction);
         }
         reactionRepository.flush();
-        return toResponse(activityId, request.userId());
+        return toResponse(activityId, userId);
     }
 
     private ReacaoDTO toResponse(UUID activityId, UUID userId) {

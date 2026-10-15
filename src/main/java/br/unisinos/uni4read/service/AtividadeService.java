@@ -56,23 +56,23 @@ public class AtividadeService {
     }
 
     @Transactional
-    public AtividadeFeedResponseDTO registrarAtividade(CriarAtividadeRequestDTO request) {
+    public AtividadeFeedResponseDTO registrarAtividade(CriarAtividadeRequestDTO request, UUID userId) {
         FeedActivity activity = new FeedActivity();
-        activity.setUser(userRepository.findById(request.userId())
+        activity.setUser(userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado")));
         activity.setBook(bookRepository.findById(request.bookId())
                 .orElseThrow(() -> new IllegalArgumentException("Livro nao encontrado")));
         activity.setStatus(request.status());
         activity.setRating(null);
         FeedActivity savedActivity = feedActivityRepository.save(activity);
-        return toResponse(savedActivity, request.userId());
+        return toResponse(savedActivity, userId);
     }
 
     @Transactional
-    public AtividadeFeedResponseDTO atualizar(UUID activityId, AtualizarAtividadeRequestDTO request) {
+    public AtividadeFeedResponseDTO atualizar(UUID activityId, AtualizarAtividadeRequestDTO request, UUID userId) {
         FeedActivity activity = feedActivityRepository.findById(activityId)
                 .orElseThrow(() -> new IllegalArgumentException("Atividade nao encontrada"));
-        if (!activity.getUser().getId().equals(request.userId())) {
+        if (!activity.getUser().getId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuario sem permissao para alterar esta atividade");
         }
         if (request.status() == null) {
@@ -88,7 +88,7 @@ public class AtividadeService {
         }
         activity.setStatus(request.status());
         activity.setRating(request.status() == ReadingStatus.READ ? request.rating() : null);
-        return toResponse(activity, request.userId());
+        return toResponse(activity, userId);
     }
 
     @Transactional
@@ -107,7 +107,11 @@ public class AtividadeService {
     private AtividadeFeedResponseDTO toResponse(FeedActivity activity, UUID userId) {
         return new AtividadeFeedResponseDTO(
                 activity.getId(),
-                new UserResponseDTO(activity.getUser().getId(), activity.getUser().getName()),
+                new UserResponseDTO(
+                        activity.getUser().getId(),
+                        activity.getUser().getName(),
+                        activity.getUser().getEmail(),
+                        activity.getUser().getRole()),
                 new BookResponseDTO(activity.getBook().getId(), activity.getBook().getTitle(), activity.getBook().getAuthor()),
                 activity.getStatus(),
                 activity.getRating(),

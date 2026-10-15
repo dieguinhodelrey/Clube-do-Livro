@@ -20,7 +20,17 @@ A API inicia em `http://localhost:8080`. O banco padrão é H2 em memória e é 
 - `GET /api/books`: lista livros.
 - `POST /api/books`: cria ou reutiliza livro por título e autor.
 
-Os enums enviados pela API são `READING`, `READ`, `LIKE` e `DISLIKE`. A autenticação JWT ainda está pendente; por enquanto o frontend usa o UUID seed de Alice para demonstrar a integração.
+Os enums enviados pela API são `READING`, `READ`, `LIKE` e `DISLIKE`.
+
+### Autenticação
+
+- `POST /api/auth/register`: cria uma conta e inicia a sessão.
+- `POST /api/auth/login`: autentica e retorna um access token.
+- `POST /api/auth/refresh`: rotaciona o refresh token `HttpOnly`.
+- `GET /api/auth/me`: retorna o usuário autenticado.
+- `POST /api/auth/logout`: revoga a sessão atual.
+
+As rotas do feed usam o usuário do token JWT e não aceitam mais `userId` enviado pelo cliente. Em desenvolvimento, os usuários seed são `alice@example.com` e `bruno@example.com`, ambos com a senha `password`. Defina `JWT_SECRET` com pelo menos 32 bytes fora do ambiente de desenvolvimento.
 
 ## Testes
 

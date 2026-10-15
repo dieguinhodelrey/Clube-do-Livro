@@ -4,5 +4,5 @@ import java.util.UUID;
 
 import br.unisinos.uni4read.entity.ReadingStatus;
 
-public record AtualizarAtividadeRequestDTO(UUID userId, ReadingStatus status, Integer rating) {
+public record AtualizarAtividadeRequestDTO(ReadingStatus status, Integer rating) {
 }
