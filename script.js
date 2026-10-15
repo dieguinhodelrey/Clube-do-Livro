@@ -1,247 +1,166 @@
-const ATIVIDADES_PADRAO = [
-    {
-        id: "seed-1",
-        usuario: "Diego",
-        avatar: "📚",
-        status: "lendo",
-        livro: "Como se tornar um Divo",
-        autor: "Diego Del Rey",
-        nota: null
-    },
-    {
-        id: "seed-2",
-        usuario: "Cristiana",
-        avatar: "🌻",
-        status: "lido",
-        livro: "violet bent backwards over the grass",
-        autor: "Lana Del Rey",
-        nota: 5
-    },
-    {
-        id: "seed-3",
-        usuario: "Leonardo",
-        avatar: "🐻",
-        status: "lendo",
-        livro: "O Avesso da Pele",
-        autor: "Jeferson Tenório",
-        nota: null
-    }
-];
-
-const CHAVE_STORAGE = "uni4read-atividades";
-
-function carregarAtividades() {
-    try {
-        const salvo = localStorage.getItem(CHAVE_STORAGE);
-        if (salvo) {
-            return JSON.parse(salvo);
-        }
-    } catch (erro) {
-        console.error("Não foi possível carregar os dados salvos:", erro);
-    }
-    return ATIVIDADES_PADRAO;
-}
-
-function salvarAtividades() {
-    try {
-        localStorage.setItem(CHAVE_STORAGE, JSON.stringify(atividades));
-    } catch (erro) {
-        console.error("Não foi possível salvar os dados:", erro);
-    }
-}
-
-const atividades = carregarAtividades();
+const API_BASE_URL = window.UNI4READ_API_URL || "http://localhost:8080/api";
+const CURRENT_USER_ID = "10000000-0000-0000-0000-000000000001";
 
 const feed = document.querySelector(".feed");
+const activities = [];
 
-const CORES_CAPA = [
-    "#29479f", "#3f7d55", "#a4c6f3", "#d97757",
-    "#7c5cbf", "#c14e6b", "#3f9188", "#b98a2f"
-];
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
 
-function corParaTexto(texto) {
-    let hash = 0;
-    for (let i = 0; i < texto.length; i++) {
-        hash = texto.charCodeAt(i) + ((hash << 5) - hash);
+async function apiRequest(path, options = {}) {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+        },
+        ...options
+    });
+
+    if (!response.ok) {
+        let message = `Erro ${response.status}`;
+        try {
+            const body = await response.json();
+            message = body.message || body.error || message;
+        } catch (error) {
+            // A resposta pode não ter corpo JSON.
+        }
+        throw new Error(message);
     }
-    const indice = Math.abs(hash) % CORES_CAPA.length;
-    return CORES_CAPA[indice];
+
+    if (response.status === 204) return null;
+    return response.json();
 }
 
-function gerarCapa(livro, autor) {
-    const cor = corParaTexto(livro + autor);
-
-    const capa = document.createElement("div");
-    capa.className = "book-cover";
-    capa.style.background = cor;
-
-    const tituloEl = document.createElement("span");
-    tituloEl.className = "cover-title";
-    tituloEl.textContent = livro;
-
-    const autorEl = document.createElement("span");
-    autorEl.className = "cover-author";
-    autorEl.textContent = autor;
-
-    capa.appendChild(tituloEl);
-    capa.appendChild(autorEl);
-
-    return capa;
+function statusLabel(status) {
+    return status === "READ" ? "LIDO" : "LENDO";
 }
 
-function criarCard(atividade) {
+function statusDescription(status) {
+    return status === "READ" ? "leu" : "está lendo";
+}
 
+function statusClass(status) {
+    return status === "READ" ? "read" : "reading";
+}
+
+function renderLoading() {
+    feed.innerHTML = '<div class="empty-state"><p>Carregando feed...</p></div>';
+}
+
+function renderError(error) {
+    feed.innerHTML = `<div class="empty-state"><h2>Não foi possível carregar o feed</h2><p>${escapeHtml(error.message)}</p></div>`;
+}
+
+function renderEmpty() {
+    feed.innerHTML = '<div class="empty-state"><h2>Nenhuma atividade encontrada</h2><p>Adicione um livro para começar.</p></div>';
+}
+
+function gerarCapa(book) {
+    const cover = document.createElement("div");
+    cover.className = "book-cover generated-cover";
+    cover.textContent = book.title;
+    return cover;
+}
+
+function iniciaisDoNome(name) {
+    const partes = String(name || "?").trim().split(/\s+/).filter(Boolean);
+    if (partes.length === 0) return "?";
+    if (partes.length === 1) return partes[0].charAt(0).toUpperCase();
+    return `${partes[0].charAt(0)}${partes[1].charAt(0)}`.toUpperCase();
+}
+
+function criarCard(activity) {
     const card = document.createElement("article");
+    card.className = `feed-card ${activity.status === "READ" ? "read-card" : ""}`;
+    card.dataset.id = activity.id;
+    const isOwner = activity.user.id === CURRENT_USER_ID;
 
-    card.classList.add("feed-card");
-    card.dataset.id = atividade.id;
-
-    if (atividade.status === "lido") {
-        card.classList.add("read-card");
-    }
-    const avaliacaoHTML = (atividade.status === "lido" && atividade.nota)
-        ? `<div class="rating-display">
-               <span class="stars">${"★".repeat(atividade.nota)}${"☆".repeat(5 - atividade.nota)}</span>
-               <span>${atividade.nota}/5</span>
-           </div>`
+    const rating = activity.rating
+        ? `<div class="rating-display"><span class="stars">${"★".repeat(activity.rating)}${"☆".repeat(5 - activity.rating)}</span><span>${activity.rating}/5</span></div>`
         : "";
+    const likeSelected = activity.currentUserReaction === "LIKE" ? "selected" : "";
+    const dislikeSelected = activity.currentUserReaction === "DISLIKE" ? "selected" : "";
 
     card.innerHTML = `
         <div class="card-header">
-
             <div class="user-info">
-
-                <div class="avatar">
-                    ${atividade.avatar}
-                </div>
-
-                <div>
-                    <strong>${atividade.usuario}</strong>
-
-                    <span>
-                        ${atividade.status === "lendo"
-                            ? "está lendo"
-                            : "leu"}
-                    </span>
-                </div>
-
+                <div class="avatar">${escapeHtml(iniciaisDoNome(activity.user.name))}</div>
+                <div><strong>${escapeHtml(activity.user.name)}</strong><span>${statusDescription(activity.status)}</span></div>
             </div>
-
-            <div class="card-action-wrapper">
-                <button class="card-action">
-                    ⋮
-                </button>
-
+            ${isOwner ? `<div class="card-action-wrapper">
+                <button class="card-action" type="button" aria-label="Ações">⋮</button>
                 <div class="card-menu">
-                    <button type="button" class="card-menu-item" data-action="alterar-status">
-                        Alterar status
-                    </button>
-                    <button type="button" class="card-menu-item danger" data-action="excluir">
-                        Excluir livro
-                    </button>
+                    <button type="button" class="card-menu-item" data-action="alterar-status">Alterar status</button>
+                    <button type="button" class="card-menu-item danger" data-action="excluir">Excluir livro</button>
                 </div>
-            </div>
-
+            </div>` : ""}
         </div>
-
-
         <div class="book-content">
-
             <div class="book-cover-slot"></div>
-
             <div class="book-info">
-
-                <span class="status-badge ${
-                    atividade.status === "lendo"
-                        ? "reading"
-                        : "read"
-                }">
-
-                    ${
-                        atividade.status === "lendo"
-                            ? "LENDO"
-                            : "LIDO"
-                    }
-
-                </span>
-
-                <h2>
-                    ${atividade.livro}
-                </h2>
-
-                <p>
-                    ${atividade.autor}
-                </p>
-
-                ${avaliacaoHTML}
-
+                <span class="status-badge ${statusClass(activity.status)}">${statusLabel(activity.status)}</span>
+                <h2>${escapeHtml(activity.book.title)}</h2>
+                <p>${escapeHtml(activity.book.author)}</p>
+                ${rating}
             </div>
-
         </div>
-
-
         <div class="card-footer">
-
-            <button class="reaction-button">
-                👍
-            </button>
-
-            <button class="reaction-button">
-                👎
-            </button>
-
+            <button class="reaction-button ${likeSelected}" data-reaction="LIKE" type="button" aria-label="Curtir">👍 <span>${activity.likes}</span></button>
+            <button class="reaction-button ${dislikeSelected}" data-reaction="DISLIKE" type="button" aria-label="Não curtir">👎 <span>${activity.dislikes}</span></button>
         </div>
     `;
 
-    const capaSlot = card.querySelector(".book-cover-slot");
-    const capa = gerarCapa(atividade.livro, atividade.autor);
-    capaSlot.replaceWith(capa);
-
+    card.querySelector(".book-cover-slot").replaceWith(gerarCapa(activity.book));
     return card;
 }
 
 function renderFeed() {
     feed.innerHTML = "";
-
-    atividades.forEach(atividade => {
-        const card = criarCard(atividade);
-        feed.appendChild(card);
-    });
-
-    salvarAtividades();
-}
-
-renderFeed();
-
-document.addEventListener("click", function(event) {
-
-    if (!event.target.classList.contains("reaction-button")) {
+    if (activities.length === 0) {
+        renderEmpty();
         return;
     }
+    activities.forEach(activity => feed.appendChild(criarCard(activity)));
+}
 
-    const card = event.target.closest(".feed-card");
+async function carregarFeed(status = null) {
+    renderLoading();
+    try {
+        const params = new URLSearchParams({ userId: CURRENT_USER_ID });
+        if (status) params.set("status", status);
+        const response = await apiRequest(`/feed?${params}`);
+        activities.splice(0, activities.length, ...response);
+        renderFeed();
+    } catch (error) {
+        renderError(error);
+    }
+}
 
-    const buttons = card.querySelectorAll(".reaction-button");
-
-    buttons.forEach(button => {
-        button.classList.remove("selected");
+async function alternarReacao(activityId, type) {
+    const updated = await apiRequest(`/feed/${activityId}/reacao`, {
+        method: "POST",
+        body: JSON.stringify({ userId: CURRENT_USER_ID, type })
     });
-
-    event.target.classList.add("selected");
-});
+    const activity = activities.find(item => item.id === activityId);
+    if (activity) {
+        activity.likes = updated.likes;
+        activity.dislikes = updated.dislikes;
+        activity.currentUserReaction = updated.userReaction;
+    }
+    renderFeed();
+}
 
 const addBookButton = document.querySelector(".add-book-button");
 const addBookOverlay = document.getElementById("addBookOverlay");
 const addBookClose = document.getElementById("addBookClose");
 const addBookCancel = document.getElementById("addBookCancel");
 const addBookForm = document.getElementById("addBookForm");
-
-const AVATARES_PADRAO = ["📘", "📗", "📙", "📕", "🦉", "🐱", "🐼", "🦊"];
-
-function avatarAleatorio() {
-    const indice = Math.floor(Math.random() * AVATARES_PADRAO.length);
-    return AVATARES_PADRAO[indice];
-}
 
 function abrirModal() {
     addBookOverlay.classList.add("open");
@@ -256,102 +175,32 @@ function fecharModal() {
 addBookButton.addEventListener("click", abrirModal);
 addBookClose.addEventListener("click", fecharModal);
 addBookCancel.addEventListener("click", fecharModal);
-
-// Fecha ao clicar fora do card do modal
-addBookOverlay.addEventListener("click", function(event) {
-    if (event.target === addBookOverlay) {
-        fecharModal();
-    }
+addBookOverlay.addEventListener("click", event => {
+    if (event.target === addBookOverlay) fecharModal();
 });
 
-addBookForm.addEventListener("submit", function(event) {
+addBookForm.addEventListener("submit", async event => {
     event.preventDefault();
+    const title = document.getElementById("fieldTitulo").value.trim();
+    const author = document.getElementById("fieldAutor").value.trim();
+    const status = document.getElementById("fieldStatus").value === "lido" ? "READ" : "READING";
+    if (!title || !author) return;
 
-    const titulo = document.getElementById("fieldTitulo").value.trim();
-    const autor = document.getElementById("fieldAutor").value.trim();
-    const status = document.getElementById("fieldStatus").value;
-
-    if (!titulo || !autor) {
-        return;
-    }
-
-    const novaAtividade = {
-        id: "livro-" + Date.now(),
-        usuario: "Você",
-        avatar: avatarAleatorio(),
-        status: status,
-        livro: titulo,
-        autor: autor,
-        nota: null
-    };
-
-    atividades.unshift(novaAtividade);
-
-    renderFeed();
-    fecharModal();
-});
-
-document.addEventListener("click", function(event) {
-
-    const actionButton = event.target.closest(".card-action");
-
-    if (actionButton) {
-        const menu = actionButton.nextElementSibling;
-        const jaAberto = menu.classList.contains("open");
-
-        fecharTodosOsMenus();
-
-        if (!jaAberto) {
-            menu.classList.add("open");
-        }
-
-        return;
-    }
-
-    if (!event.target.closest(".card-menu")) {
-        fecharTodosOsMenus();
+    try {
+        const book = await apiRequest("/books", {
+            method: "POST",
+            body: JSON.stringify({ title, author })
+        });
+        await apiRequest("/feed", {
+            method: "POST",
+            body: JSON.stringify({ userId: CURRENT_USER_ID, bookId: book.id, status })
+        });
+        fecharModal();
+        await carregarFeed();
+    } catch (error) {
+        renderError(error);
     }
 });
-
-function fecharTodosOsMenus() {
-    document.querySelectorAll(".card-menu.open").forEach(menu => {
-        menu.classList.remove("open");
-    });
-}
-
-// Clique nos itens do menu (Excluir livro / Alterar status)
-document.addEventListener("click", function(event) {
-
-    const item = event.target.closest(".card-menu-item");
-
-    if (!item) {
-        return;
-    }
-
-    const card = item.closest(".feed-card");
-    const id = card.dataset.id;
-
-    fecharTodosOsMenus();
-
-    if (item.dataset.action === "excluir") {
-        excluirLivro(id);
-    }
-
-    if (item.dataset.action === "alterar-status") {
-        abrirModalStatus(id);
-    }
-});
-
-function excluirLivro(id) {
-    const indice = atividades.findIndex(atividade => atividade.id === id);
-
-    if (indice === -1) {
-        return;
-    }
-
-    atividades.splice(indice, 1);
-    renderFeed();
-}
 
 const statusOverlay = document.getElementById("statusOverlay");
 const statusClose = document.getElementById("statusClose");
@@ -362,98 +211,136 @@ const statusLidoBtn = document.getElementById("statusLido");
 const ratingSection = document.getElementById("ratingSection");
 const starPicker = document.getElementById("starPicker");
 
-let idLivroEmEdicao = null;
+let idAtividadeEmEdicao = null;
 let statusSelecionado = null;
 let notaSelecionada = null;
 
+function atualizarVisualStatus() {
+    statusLendoBtn.classList.toggle("selected", statusSelecionado === "READING");
+    statusLidoBtn.classList.toggle("selected", statusSelecionado === "READ");
+    ratingSection.classList.toggle("visible", statusSelecionado === "READ");
+    statusLendoBtn.disabled = statusSelecionado === "READ";
+}
+
+function atualizarVisualEstrelas() {
+    starPicker.querySelectorAll(".star-button").forEach(button => {
+        button.classList.toggle("active", notaSelecionada !== null && Number(button.dataset.value) <= notaSelecionada);
+    });
+}
+
 function abrirModalStatus(id) {
-    const atividade = atividades.find(item => item.id === id);
-
-    if (!atividade) {
-        return;
-    }
-
-    idLivroEmEdicao = id;
-    statusSelecionado = atividade.status;
-    notaSelecionada = atividade.nota || null;
-
+    const activity = activities.find(item => item.id === id);
+    if (!activity) return;
+    idAtividadeEmEdicao = id;
+    statusSelecionado = activity.status;
+    notaSelecionada = activity.rating || null;
     atualizarVisualStatus();
     atualizarVisualEstrelas();
-    atualizarVisibilidadeAvaliacao();
-
     statusOverlay.classList.add("open");
 }
 
 function fecharModalStatus() {
     statusOverlay.classList.remove("open");
-    idLivroEmEdicao = null;
+    idAtividadeEmEdicao = null;
 }
 
-function atualizarVisualStatus() {
-    statusLendoBtn.classList.toggle("selected", statusSelecionado === "lendo");
-    statusLidoBtn.classList.toggle("selected", statusSelecionado === "lido");
-}
-
-function atualizarVisibilidadeAvaliacao() {
-    ratingSection.classList.toggle("visible", statusSelecionado === "lido");
-}
-
-function atualizarVisualEstrelas() {
-    const botoes = starPicker.querySelectorAll(".star-button");
-
-    botoes.forEach(botao => {
-        const valor = Number(botao.dataset.value);
-        botao.classList.toggle("active", notaSelecionada !== null && valor <= notaSelecionada);
-    });
-}
-
-statusLendoBtn.addEventListener("click", function() {
-    statusSelecionado = "lendo";
+statusLendoBtn.addEventListener("click", () => {
+    statusSelecionado = "READING";
     atualizarVisualStatus();
-    atualizarVisibilidadeAvaliacao();
 });
 
-statusLidoBtn.addEventListener("click", function() {
-    statusSelecionado = "lido";
+statusLidoBtn.addEventListener("click", () => {
+    statusSelecionado = "READ";
     atualizarVisualStatus();
-    atualizarVisibilidadeAvaliacao();
 });
 
-starPicker.addEventListener("click", function(event) {
-    const botao = event.target.closest(".star-button");
-
-    if (!botao) {
-        return;
-    }
-
-    notaSelecionada = Number(botao.dataset.value);
+starPicker.addEventListener("click", event => {
+    const button = event.target.closest(".star-button");
+    if (!button) return;
+    notaSelecionada = Number(button.dataset.value);
     atualizarVisualEstrelas();
 });
 
 statusClose.addEventListener("click", fecharModalStatus);
 statusCancel.addEventListener("click", fecharModalStatus);
+statusOverlay.addEventListener("click", event => {
+    if (event.target === statusOverlay) fecharModalStatus();
+});
 
-statusOverlay.addEventListener("click", function(event) {
-    if (event.target === statusOverlay) {
+statusConfirm.addEventListener("click", async () => {
+    if (!idAtividadeEmEdicao) return;
+    try {
+        await apiRequest(`/feed/${idAtividadeEmEdicao}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+                userId: CURRENT_USER_ID,
+                status: statusSelecionado,
+                rating: statusSelecionado === "READ" ? notaSelecionada : null
+            })
+        });
         fecharModalStatus();
+        await carregarFeed();
+    } catch (error) {
+        renderError(error);
     }
 });
 
-statusConfirm.addEventListener("click", function() {
-    if (!idLivroEmEdicao) {
+function fecharTodosOsMenus() {
+    document.querySelectorAll(".card-menu.open").forEach(menu => menu.classList.remove("open"));
+}
+
+feed.addEventListener("click", async event => {
+    const actionButton = event.target.closest(".card-action");
+    if (actionButton) {
+        const menu = actionButton.nextElementSibling;
+        const wasOpen = menu.classList.contains("open");
+        fecharTodosOsMenus();
+        if (!wasOpen) menu.classList.add("open");
         return;
     }
 
-    const atividade = atividades.find(item => item.id === idLivroEmEdicao);
-
-    if (!atividade) {
+    const reactionButton = event.target.closest(".reaction-button");
+    if (reactionButton) {
+        try {
+            await alternarReacao(reactionButton.closest(".feed-card").dataset.id, reactionButton.dataset.reaction);
+        } catch (error) {
+            renderError(error);
+        }
         return;
     }
 
-    atividade.status = statusSelecionado;
+    const menuItem = event.target.closest(".card-menu-item");
+    if (!menuItem) return;
+    const id = menuItem.closest(".feed-card").dataset.id;
+    fecharTodosOsMenus();
 
-    atividade.nota = statusSelecionado === "lido" ? notaSelecionada : null;
-
-    renderFeed();
-    fecharModalStatus();
+    if (menuItem.dataset.action === "alterar-status") {
+        abrirModalStatus(id);
+    } else if (menuItem.dataset.action === "excluir") {
+        try {
+            await apiRequest(`/feed/${id}?userId=${CURRENT_USER_ID}`, { method: "DELETE" });
+            await carregarFeed();
+        } catch (error) {
+            renderError(error);
+        }
+    }
 });
+
+document.addEventListener("click", event => {
+    if (!event.target.closest(".card-menu") && !event.target.closest(".card-action")) {
+        fecharTodosOsMenus();
+    }
+});
+
+document.querySelectorAll(".sidebar-item").forEach(item => {
+    item.addEventListener("click", event => {
+        const href = item.getAttribute("href");
+        if (href === "feed.html" || href === "lidos.html" || href === "lendo.html") {
+            event.preventDefault();
+            const status = href === "lidos.html" ? "READ" : href === "lendo.html" ? "READING" : null;
+            carregarFeed(status);
+        }
+    });
+});
+
+carregarFeed();
