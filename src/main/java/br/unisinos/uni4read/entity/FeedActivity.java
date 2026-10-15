@@ -42,6 +42,9 @@ public class FeedActivity {
     @Column(nullable = false)
     private ReadingStatus status;
 
+    @Column
+    private Integer rating;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 

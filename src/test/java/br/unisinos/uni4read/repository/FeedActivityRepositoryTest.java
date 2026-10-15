@@ -7,10 +7,12 @@ import java.util.UUID;
 
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
 import br.unisinos.uni4read.entity.FeedActivity;
+import br.unisinos.uni4read.entity.Book;
 import br.unisinos.uni4read.entity.Reaction;
 import br.unisinos.uni4read.entity.ReactionType;
 import br.unisinos.uni4read.entity.ReadingStatus;
@@ -20,7 +22,7 @@ import jakarta.persistence.EntityManager;
 @DataJpaTest
 class FeedActivityRepositoryTest {
 
-    private static final UUID FIRST_ACTIVITY_ID = UUID.fromString("30000000-0000-0000-0000-000000000001");
+    private FeedActivity firstActivity;
 
     @Autowired
     private FeedActivityRepository feedActivityRepository;
@@ -32,27 +34,55 @@ class FeedActivityRepositoryTest {
     private UserRepository userRepository;
 
     @Autowired
+    private BookRepository bookRepository;
+
+    @Autowired
     private EntityManager entityManager;
 
+    @BeforeEach
+    void createFixtures() {
+        User alice = userRepository.findById(UUID.fromString("10000000-0000-0000-0000-000000000001")).orElseThrow();
+        User bruno = userRepository.findById(UUID.fromString("10000000-0000-0000-0000-000000000002")).orElseThrow();
+
+        Book firstBook = new Book();
+        firstBook.setTitle("Test Book One");
+        firstBook.setAuthor("Test Author One");
+        bookRepository.save(firstBook);
+
+        Book secondBook = new Book();
+        secondBook.setTitle("Test Book Two");
+        secondBook.setAuthor("Test Author Two");
+        bookRepository.save(secondBook);
+
+        firstActivity = new FeedActivity();
+        firstActivity.setUser(alice);
+        firstActivity.setBook(firstBook);
+        firstActivity.setStatus(ReadingStatus.READING);
+        entityManager.persist(firstActivity);
+
+        FeedActivity secondActivity = new FeedActivity();
+        secondActivity.setUser(bruno);
+        secondActivity.setBook(secondBook);
+        secondActivity.setStatus(ReadingStatus.READ);
+        entityManager.persist(secondActivity);
+        entityManager.flush();
+    }
+
     @Test
-    void loadsSeededActivitiesAndReactions() {
-        FeedActivity activity = feedActivityRepository.findById(FIRST_ACTIVITY_ID).orElseThrow();
-        Reaction reaction = reactionRepository.findAll().get(0);
+    void loadsActivitiesAndRelationships() {
+        FeedActivity activity = feedActivityRepository.findById(firstActivity.getId()).orElseThrow();
 
         assertThat(feedActivityRepository.count()).isEqualTo(2);
         assertThat(activity.getStatus()).isEqualTo(ReadingStatus.READING);
         assertThat(activity.getUser().getName()).isEqualTo("Alice Johnson");
-        assertThat(activity.getBook().getTitle()).isEqualTo("The Pragmatic Programmer");
-        assertThat(reaction.getType()).isIn(ReactionType.LIKE, ReactionType.DISLIKE);
-        assertThat(reaction.getActivity()).isNotNull();
-        assertThat(reaction.getUser()).isNotNull();
+        assertThat(activity.getBook().getTitle()).isEqualTo("Test Book One");
     }
 
     @Test
     void assignsCreationTimeWhenSavingAnActivity() {
         FeedActivity activity = new FeedActivity();
         activity.setUser(userRepository.findById(UUID.fromString("10000000-0000-0000-0000-000000000001")).orElseThrow());
-        activity.setBook(feedActivityRepository.findById(FIRST_ACTIVITY_ID).orElseThrow().getBook());
+        activity.setBook(firstActivity.getBook());
         activity.setStatus(ReadingStatus.READING);
 
         FeedActivity savedActivity = feedActivityRepository.saveAndFlush(activity);
@@ -62,9 +92,32 @@ class FeedActivityRepositoryTest {
     }
 
     @Test
+    void filtersActivitiesByReadingStatus() {
+        assertThat(feedActivityRepository.findAllByStatusOrderByCreatedAtDesc(ReadingStatus.READING))
+            .extracting(FeedActivity::getStatus)
+            .containsExactly(ReadingStatus.READING);
+    }
+
+    @Test
+    void persistsOptionalRating() {
+        FeedActivity activity = feedActivityRepository.findById(firstActivity.getId()).orElseThrow();
+        activity.setRating(5);
+
+        FeedActivity savedActivity = feedActivityRepository.saveAndFlush(activity);
+
+        assertThat(savedActivity.getRating()).isEqualTo(5);
+    }
+
+    @Test
     void rejectsDuplicateReactionForTheSameUserAndActivity() {
-        FeedActivity activity = feedActivityRepository.findById(FIRST_ACTIVITY_ID).orElseThrow();
+        FeedActivity activity = feedActivityRepository.findById(firstActivity.getId()).orElseThrow();
         User user = userRepository.findById(UUID.fromString("10000000-0000-0000-0000-000000000002")).orElseThrow();
+        Reaction existingReaction = new Reaction();
+        existingReaction.setActivity(activity);
+        existingReaction.setUser(user);
+        existingReaction.setType(ReactionType.LIKE);
+        reactionRepository.saveAndFlush(existingReaction);
+
         Reaction duplicateReaction = new Reaction();
         duplicateReaction.setActivity(activity);
         duplicateReaction.setUser(user);

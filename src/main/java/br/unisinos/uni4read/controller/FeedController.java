@@ -9,17 +9,21 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import br.unisinos.uni4read.dto.AtividadeFeedResponseDTO;
+import br.unisinos.uni4read.dto.AtualizarAtividadeRequestDTO;
 import br.unisinos.uni4read.dto.CriarAtividadeRequestDTO;
 import br.unisinos.uni4read.dto.ReacaoDTO;
 import br.unisinos.uni4read.dto.ReacaoRequestDTO;
 import br.unisinos.uni4read.service.AtividadeService;
 import br.unisinos.uni4read.service.ReacaoService;
+import br.unisinos.uni4read.entity.ReadingStatus;
 
 @RestController
 @RequestMapping("/api/feed")
@@ -35,8 +39,25 @@ public class FeedController {
     }
 
     @GetMapping
-    public List<AtividadeFeedResponseDTO> listarFeed(@RequestParam(required = false) UUID userId) {
-        return atividadeService.listarFeed(userId);
+    public List<AtividadeFeedResponseDTO> listarFeed(
+            @RequestParam(required = false) UUID userId,
+            @RequestParam(required = false) ReadingStatus status) {
+        return atividadeService.listarFeed(userId, status);
+    }
+
+    @PatchMapping("/{id}")
+    public AtividadeFeedResponseDTO atualizar(
+            @PathVariable UUID id,
+            @RequestBody AtualizarAtividadeRequestDTO request) {
+        return atividadeService.atualizar(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(
+            @PathVariable UUID id,
+            @RequestParam UUID userId) {
+        atividadeService.excluir(id, userId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping

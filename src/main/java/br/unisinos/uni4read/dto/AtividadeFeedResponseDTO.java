@@ -11,6 +11,7 @@ public record AtividadeFeedResponseDTO(
         UserResponseDTO user,
         BookResponseDTO book,
         ReadingStatus status,
+        Integer rating,
         Instant createdAt,
         long likes,
         long dislikes,
