@@ -8,7 +8,9 @@ O frontend é uma página estática. Sirva esta pasta por HTTP para que as chama
 python -m http.server 5500
 ```
 
-Abra `http://localhost:5500`. O backend deve estar em execução em `http://localhost:8080`.
+Abra `http://localhost:5500` (ou `http://127.0.0.1:5500`). O backend deve estar em execução em `http://localhost:8080`.
+
+Não abra o HTML diretamente pelo Explorer (`file://`), pois o navegador não envia uma origem HTTP permitida para cookies e CORS. Se estiver usando outra porta ou origem, defina `FRONTEND_ORIGINS` no backend, por exemplo: `FRONTEND_ORIGINS=http://localhost:5500,http://localhost:3000`.
 
 Para usar outra URL de API, defina `window.UNI4READ_API_URL` antes de carregar `script.js` em `index.html`.
 

@@ -24,6 +24,10 @@
                 <span>Senha</span>
                 <input id="password" type="password" autocomplete="new-password" minlength="8" required>
             </label>
+            <label class="field">
+                <span>Confirmar senha</span>
+                <input id="passwordConfirmation" type="password" autocomplete="new-password" minlength="8" required>
+            </label>
             <p id="authError" class="auth-error" role="alert"></p>
             <button class="btn-primary auth-submit" type="submit">Criar conta</button>
         </form>
@@ -35,13 +39,19 @@
             event.preventDefault();
             const button = event.currentTarget.querySelector("button");
             const error = document.getElementById("authError");
+            const password = document.getElementById("password").value;
+            const passwordConfirmation = document.getElementById("passwordConfirmation").value;
             error.textContent = "";
+            if (password !== passwordConfirmation) {
+                error.textContent = "As senhas não coincidem.";
+                return;
+            }
             button.disabled = true;
             try {
                 await window.uni4readAuth.register(
                     document.getElementById("name").value.trim(),
                     document.getElementById("email").value.trim(),
-                    document.getElementById("password").value
+                    password
                 );
                 window.location.href = "index.html";
             } catch (exception) {
