@@ -1,6 +1,3 @@
-const API_BASE_URL = window.UNI4READ_API_URL || "http://localhost:8080/api";
-const CURRENT_USER_ID = "10000000-0000-0000-0000-000000000001";
-
 const feed = document.querySelector(".feed");
 const activities = [];
 
@@ -11,30 +8,6 @@ function escapeHtml(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
-}
-
-async function apiRequest(path, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-        headers: {
-            "Content-Type": "application/json",
-            ...(options.headers || {})
-        },
-        ...options
-    });
-
-    if (!response.ok) {
-        let message = `Erro ${response.status}`;
-        try {
-            const body = await response.json();
-            message = body.message || body.error || message;
-        } catch (error) {
-            // A resposta pode não ter corpo JSON.
-        }
-        throw new Error(message);
-    }
-
-    if (response.status === 204) return null;
-    return response.json();
 }
 
 function statusLabel(status) {
@@ -79,7 +52,7 @@ function criarCard(activity) {
     const card = document.createElement("article");
     card.className = `feed-card ${activity.status === "READ" ? "read-card" : ""}`;
     card.dataset.id = activity.id;
-    const isOwner = activity.user.id === CURRENT_USER_ID;
+    const isOwner = activity.user.id === window.uni4readAuth.currentUser.id;
 
     const rating = activity.rating
         ? `<div class="rating-display"><span class="stars">${"★".repeat(activity.rating)}${"☆".repeat(5 - activity.rating)}</span><span>${activity.rating}/5</span></div>`
@@ -132,7 +105,7 @@ function renderFeed() {
 async function carregarFeed(status = null) {
     renderLoading();
     try {
-        const params = new URLSearchParams({ userId: CURRENT_USER_ID });
+        const params = new URLSearchParams();
         if (status) params.set("status", status);
         const response = await apiRequest(`/feed?${params}`);
         activities.splice(0, activities.length, ...response);
@@ -145,7 +118,7 @@ async function carregarFeed(status = null) {
 async function alternarReacao(activityId, type) {
     const updated = await apiRequest(`/feed/${activityId}/reacao`, {
         method: "POST",
-        body: JSON.stringify({ userId: CURRENT_USER_ID, type })
+        body: JSON.stringify({ type })
     });
     const activity = activities.find(item => item.id === activityId);
     if (activity) {
@@ -193,7 +166,7 @@ addBookForm.addEventListener("submit", async event => {
         });
         await apiRequest("/feed", {
             method: "POST",
-            body: JSON.stringify({ userId: CURRENT_USER_ID, bookId: book.id, status })
+            body: JSON.stringify({ bookId: book.id, status })
         });
         fecharModal();
         await carregarFeed();
@@ -273,9 +246,8 @@ statusConfirm.addEventListener("click", async () => {
         await apiRequest(`/feed/${idAtividadeEmEdicao}`, {
             method: "PATCH",
             body: JSON.stringify({
-                userId: CURRENT_USER_ID,
-                status: statusSelecionado,
-                rating: statusSelecionado === "READ" ? notaSelecionada : null
+            status: statusSelecionado,
+            rating: statusSelecionado === "READ" ? notaSelecionada : null
             })
         });
         fecharModalStatus();
@@ -318,7 +290,7 @@ feed.addEventListener("click", async event => {
         abrirModalStatus(id);
     } else if (menuItem.dataset.action === "excluir") {
         try {
-            await apiRequest(`/feed/${id}?userId=${CURRENT_USER_ID}`, { method: "DELETE" });
+            await apiRequest(`/feed/${id}`, { method: "DELETE" });
             await carregarFeed();
         } catch (error) {
             renderError(error);
@@ -343,4 +315,9 @@ document.querySelectorAll(".sidebar-item").forEach(item => {
     });
 });
 
-carregarFeed();
+document.getElementById("logoutButton").addEventListener("click", () => window.uni4readAuth.logout());
+
+window.uni4readAuth.requireAuth().then(user => {
+    document.getElementById("profileName").textContent = user.name;
+    carregarFeed();
+});

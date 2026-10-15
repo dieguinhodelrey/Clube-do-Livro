@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar conta - Uni4Read</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-page">
+    <main class="auth-card">
+        <img src="assets/unisinos-logo.webp" alt="Unisinos" class="auth-logo">
+        <h1>Criar conta</h1>
+        <p class="auth-subtitle">Comece a organizar sua jornada de leitura.</p>
+        <form id="registerForm" class="auth-form">
+            <label class="field">
+                <span>Nome</span>
+                <input id="name" type="text" autocomplete="name" maxlength="100" required>
+            </label>
+            <label class="field">
+                <span>E-mail</span>
+                <input id="email" type="email" autocomplete="email" required>
+            </label>
+            <label class="field">
+                <span>Senha</span>
+                <input id="password" type="password" autocomplete="new-password" minlength="8" required>
+            </label>
+            <p id="authError" class="auth-error" role="alert"></p>
+            <button class="btn-primary auth-submit" type="submit">Criar conta</button>
+        </form>
+        <p class="auth-link">Já possui uma conta? <a href="login.html">Entrar</a></p>
+    </main>
+    <script src="auth.js"></script>
+    <script>
+        document.getElementById("registerForm").addEventListener("submit", async event => {
+            event.preventDefault();
+            const button = event.currentTarget.querySelector("button");
+            const error = document.getElementById("authError");
+            error.textContent = "";
+            button.disabled = true;
+            try {
+                await window.uni4readAuth.register(
+                    document.getElementById("name").value.trim(),
+                    document.getElementById("email").value.trim(),
+                    document.getElementById("password").value
+                );
+                window.location.href = "index.html";
+            } catch (exception) {
+                error.textContent = exception.message;
+            } finally {
+                button.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

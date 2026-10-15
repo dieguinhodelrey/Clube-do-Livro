@@ -16,6 +16,8 @@ Para usar outra URL de API, defina `window.UNI4READ_API_URL` antes de carregar `
 
 O feed, criação de livros, atividades, alteração de status, avaliação, exclusão e reações são persistidos na API. O frontend não usa `localStorage` como fonte de dados.
 
-A identidade atual é temporariamente o usuário seed Alice (`10000000-0000-0000-0000-000000000001`). O próximo incremento deve substituir essa constante por login e token JWT.
+O frontend usa login e cadastro com JWT. O access token fica apenas em memória e o refresh token é mantido pelo backend em cookie `HttpOnly`; ao recarregar uma página protegida, a sessão é restaurada automaticamente.
+
+Para testar rapidamente, os usuários seed são `alice@example.com` e `bruno@example.com`, ambos com a senha `password`.
 # Clube-do-Livro
 # Clube-do-Livro
