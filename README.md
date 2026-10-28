@@ -8,6 +8,33 @@ No Windows, dentro desta pasta:
 ./mvnw.cmd spring-boot:run
 ```
 
+No macOS, é necessário ter o Java 17 ou superior instalado. Com o Homebrew, a instalação pode ser feita assim:
+
+```bash
+brew install openjdk@17
+sudo ln -sfn "$(brew --prefix)/opt/openjdk@17/libexec/openjdk.jdk" /Library/Java/JavaVirtualMachines/openjdk-17.jdk
+```
+
+Confirme a versão do Java e, na primeira execução, dê permissão ao Maven Wrapper:
+
+```bash
+java -version
+chmod +x mvnw
+```
+
+Depois, dentro da pasta `backend`, suba a aplicação com:
+
+```bash
+./mvnw spring-boot:run
+```
+
+Se preferir definir um segredo JWT próprio durante o desenvolvimento, use uma variável de ambiente antes de iniciar a aplicação:
+
+```bash
+export JWT_SECRET='uma-chave-com-pelo-menos-32-caracteres'
+./mvnw spring-boot:run
+```
+
 A API inicia em `http://localhost:8080`. O banco padrão é H2 em memória e é recriado a cada execução. Os dados seed incluem os usuários Alice e Bruno.
 
 ## Contrato atual
