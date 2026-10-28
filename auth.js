@@ -1,4 +1,7 @@
-const API_BASE_URL = window.UNI4READ_API_URL || "http://localhost:8080/api";
+const defaultApiHost = window.location.hostname || "localhost";
+const defaultApiProtocol = window.location.protocol === "https:" ? "https:" : "http:";
+const API_BASE_URL = window.UNI4READ_API_URL
+    || `${defaultApiProtocol}//${defaultApiHost}:8080/api`;
 
 let accessToken = null;
 let currentUser = null;
