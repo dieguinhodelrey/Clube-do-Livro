@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Uni4Read - Feed</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="assets/unisinos-logo.webp" alt="Unisinos">
+    </div>
+
+    <button class="add-book-button">
+      <span class="add-icon">+</span>
+      <span>Adicionar livro</span>
+    </button>
+
+    <nav class="sidebar-menu">
+      <a href="feed.html" class="sidebar-item active">
+        <span class="sidebar-icon"><img src="./assets/home.png" alt="Feed"></span>
+        <span>Feed</span>
+      </a>
+      <a href="lidos.html" class="sidebar-item">
+        <span class="sidebar-icon"><img src="./assets/Lido.png" alt="Lidos"></span>
+        <span>Lidos</span>
+      </a>
+      <a href="lendo.html" class="sidebar-item">
+        <span class="sidebar-icon"><img src="./assets/lendo.png" alt="Lendo"></span>
+        <span>Lendo</span>
+      </a>
+      <a href="amigos.html" class="sidebar-item">
+        <span class="sidebar-icon"><img src="./assets/Amigos.png" alt="Amigos"></span>
+        <span>Amigos</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="profile-button">
+        <span>👤</span>
+        <span>Perfil</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Conteúdo Principal -->
+  <main class="main">
+    <section class="content">
+      <div class="page-header">
+        <h1>Feed</h1>
+      </div>
+      <div class="feed"></div>
+    </section>
+  </main>
+
+  <!-- Modal: Adicionar Livro -->
+  <div class="modal-overlay" id="addBookOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Adicionar livro</h2>
+        <button class="modal-close" id="addBookClose" type="button">✕</button>
+      </div>
+
+      <form id="addBookForm">
+        <label class="field">
+          <span>Título do livro</span>
+          <input type="text" id="fieldTitulo" name="titulo" placeholder="Ex: O Hobbit" required>
+        </label>
+
+        <label class="field">
+          <span>Autor</span>
+          <input type="text" id="fieldAutor" name="autor" placeholder="Ex: J. R. R. Tolkien" required>
+        </label>
+
+        <label class="field">
+          <span>Status</span>
+          <select id="fieldStatus" name="status">
+            <option value="lendo">Lendo</option>
+            <option value="lido">Lido</option>
+          </select>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="addBookCancel">Cancelar</button>
+          <button type="submit" class="btn-primary">Adicionar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Alterar Status -->
+  <div class="modal-overlay" id="statusOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Alterar status</h2>
+        <button class="modal-close" id="statusClose" type="button">✕</button>
+      </div>
+
+      <div class="status-options">
+        <button

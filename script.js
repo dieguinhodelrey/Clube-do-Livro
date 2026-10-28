@@ -53,6 +53,17 @@ function salvarAtividades() {
 const atividades = carregarAtividades();
 
 const feed = document.querySelector(".feed");
+const pagina = (location.pathname.split("/").pop() || "feed.html").toLowerCase();
+
+function normalizarStatus(status) {
+    const valor = String(status || "").toLowerCase().trim();
+    if (["lido", "lidos", "read", "finished", "concluido", "concluído"].includes(valor)) return "lido";
+    if (["lendo", "reading", "in progress", "em andamento"].includes(valor)) return "lendo";
+    return valor;
+}
+const CHAVE_AMIGOS = "uni4read-amigos";
+let amigos = [];
+try { amigos = JSON.parse(localStorage.getItem(CHAVE_AMIGOS) || "[]"); } catch (erro) { amigos = []; }
 
 const CORES_CAPA = [
     "#29479f", "#3f7d55", "#a4c6f3", "#d97757",
@@ -96,10 +107,10 @@ function criarCard(atividade) {
     card.classList.add("feed-card");
     card.dataset.id = atividade.id;
 
-    if (atividade.status === "lido") {
+    if (normalizarStatus(atividade.status) === "lido") {
         card.classList.add("read-card");
     }
-    const avaliacaoHTML = (atividade.status === "lido" && atividade.nota)
+    const avaliacaoHTML = (normalizarStatus(atividade.status) === "lido" && atividade.nota)
         ? `<div class="rating-display">
                <span class="stars">${"★".repeat(atividade.nota)}${"☆".repeat(5 - atividade.nota)}</span>
                <span>${atividade.nota}/5</span>
@@ -119,7 +130,7 @@ function criarCard(atividade) {
                     <strong>${atividade.usuario}</strong>
 
                     <span>
-                        ${atividade.status === "lendo"
+                        ${normalizarStatus(atividade.status) === "lendo"
                             ? "está lendo"
                             : "leu"}
                     </span>
@@ -152,13 +163,13 @@ function criarCard(atividade) {
             <div class="book-info">
 
                 <span class="status-badge ${
-                    atividade.status === "lendo"
+                    normalizarStatus(atividade.status) === "lendo"
                         ? "reading"
                         : "read"
                 }">
 
                     ${
-                        atividade.status === "lendo"
+                        normalizarStatus(atividade.status) === "lendo"
                             ? "LENDO"
                             : "LIDO"
                     }
@@ -201,14 +212,86 @@ function criarCard(atividade) {
 }
 
 function renderFeed() {
+    if (!feed) return;
     feed.innerHTML = "";
 
-    atividades.forEach(atividade => {
-        const card = criarCard(atividade);
-        feed.appendChild(card);
+    if (pagina === "amigos.html") {
+        renderAmigos();
+        salvarAtividades();
+        return;
+    }
+
+    // Cada arquivo tem sua própria página: feed.html, lidos.html ou lendo.html.
+    // Normalizamos o status para evitar diferenças de maiúsculas/minúsculas ou valores antigos.
+    const filtradas = atividades.filter(atividade => {
+        const status = normalizarStatus(atividade.status);
+        if (pagina === "lidos.html") return status === "lido";
+        if (pagina === "lendo.html") return status === "lendo";
+        return true; // Feed mostra todas as atividades.
     });
 
+    if (filtradas.length === 0) {
+        const mensagem = pagina === "lidos.html"
+            ? ["Nenhum livro lido ainda", "Os livros que você marcar como lidos aparecerão aqui."]
+            : pagina === "lendo.html"
+                ? ["Você não está lendo nenhum livro", "Adicione um livro e marque o status como Lendo."]
+                : ["Seu feed está vazio", "Adicione um livro para começar."];
+        feed.innerHTML = `<div class="empty-state"><h2>${mensagem[0]}</h2><p>${mensagem[1]}</p></div>`;
+    } else {
+        filtradas.forEach(atividade => feed.appendChild(criarCard(atividade)));
+    }
     salvarAtividades();
+}
+
+function salvarAmigos() {
+    try { localStorage.setItem(CHAVE_AMIGOS, JSON.stringify(amigos)); } catch (erro) { console.error("Não foi possível salvar os amigos:", erro); }
+}
+
+function renderAmigos() {
+    if (!feed) return;
+    feed.innerHTML = `
+      <form class="friend-add-form" id="friendAddForm">
+        <label class="field"><span>Adicionar amigo</span><input id="friendName" type="text" placeholder="Nome ou @usuário" required maxlength="60"></label>
+        <button class="btn-primary" type="submit">Adicionar</button>
+      </form>
+      <div class="friends-list" id="friendsList"></div>`;
+    const list = document.getElementById("friendsList");
+    if (!amigos.length) {
+      list.innerHTML = '<div class="empty-state"><h2>Você ainda não tem amigos</h2><p>Adicione pessoas para montar sua lista de amigos.</p></div>';
+    } else {
+      amigos.forEach((nome, indice) => {
+        const linha = document.createElement("div");
+        linha.className = "friend-row";
+        const info = document.createElement("div");
+        info.className = "friend-info";
+        const avatar = document.createElement("span");
+        avatar.className = "avatar";
+        avatar.textContent = "👤";
+        const nomeEl = document.createElement("strong");
+        nomeEl.textContent = nome;
+        info.append(avatar, nomeEl);
+        const remover = document.createElement("button");
+        remover.className = "btn-secondary friend-remove";
+        remover.type = "button";
+        remover.textContent = "Remover";
+        remover.addEventListener("click", () => { amigos.splice(indice, 1); salvarAmigos(); renderAmigos(); });
+        linha.append(info, remover);
+        list.appendChild(linha);
+      });
+    }
+    document.getElementById("friendAddForm").addEventListener("submit", event => {
+      event.preventDefault();
+      const campo = document.getElementById("friendName");
+      const nome = campo.value.trim().replace(/^@/, "");
+      if (!nome) return;
+      if (amigos.some(amigo => amigo.toLocaleLowerCase() === nome.toLocaleLowerCase())) {
+        alert("Esse amigo já está na sua lista.");
+        return;
+      }
+      amigos.push(nome);
+      salvarAmigos();
+      renderAmigos();
+    });
 }
 
 renderFeed();
@@ -450,7 +533,7 @@ statusConfirm.addEventListener("click", function() {
         return;
     }
 
-    atividade.status = statusSelecionado;
+    atividade.status = normalizarStatus(statusSelecionado);
 
     atividade.nota = statusSelecionado === "lido" ? notaSelecionada : null;
 
