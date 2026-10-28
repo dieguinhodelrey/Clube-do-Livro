@@ -8,12 +8,26 @@ No Windows, dentro desta pasta:
 ./mvnw.cmd spring-boot:run
 ```
 
-No macOS, é necessário ter o Java 17 ou superior instalado. Com o Homebrew, a instalação pode ser feita assim:
+No macOS, é necessário ter o Java 17 ou superior instalado. Se o comando `brew` não for encontrado, instale primeiro o [Homebrew](https://brew.sh/):
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Ao final da instalação, siga a instrução exibida pelo instalador para adicionar o Homebrew ao `PATH`. Feche e abra o Terminal novamente e confirme:
+
+```bash
+brew --version
+```
+
+Com o Homebrew disponível, instale o Java 17:
 
 ```bash
 brew install openjdk@17
 sudo ln -sfn "$(brew --prefix)/opt/openjdk@17/libexec/openjdk.jdk" /Library/Java/JavaVirtualMachines/openjdk-17.jdk
 ```
+
+Se não quiser usar o Homebrew, baixe e instale o JDK 17 pelo [site oficial do Adoptium](https://adoptium.net/temurin/releases/?version=17), escolhendo macOS e a arquitetura do seu Mac (`aarch64` para Apple Silicon ou `x64` para Intel).
 
 Confirme a versão do Java e, na primeira execução, dê permissão ao Maven Wrapper:
 
