@@ -304,14 +304,24 @@ document.addEventListener("click", event => {
     }
 });
 
+const pages = {
+    "feed.html": { title: "Feed", status: null },
+    "lidos.html": { title: "Lidos", status: "READ" },
+    "lendo.html": { title: "Lendo", status: "READING" }
+};
+
 document.querySelectorAll(".sidebar-item").forEach(item => {
     item.addEventListener("click", event => {
         const href = item.getAttribute("href");
-        if (href === "feed.html" || href === "lidos.html" || href === "lendo.html") {
-            event.preventDefault();
-            const status = href === "lidos.html" ? "READ" : href === "lendo.html" ? "READING" : null;
-            carregarFeed(status);
-        }
+        const page = pages[href];
+        if (!page) return;
+
+        event.preventDefault();
+        document.querySelector(".page-header h1").textContent = page.title;
+        document.title = `Uni4Read - ${page.title}`;
+        document.querySelectorAll(".sidebar-item").forEach(navItem => navItem.classList.remove("active"));
+        item.classList.add("active");
+        carregarFeed(page.status);
     });
 });
 
