@@ -13,34 +13,30 @@
       <img src="assets/unisinos-logo.webp" alt="Unisinos">
     </div>
 
-    <button class="add-book-button">
+    <button class="add-book-button" type="button" aria-label="Adicionar livro">
       <span class="add-icon">+</span>
       <span>Adicionar livro</span>
     </button>
 
     <nav class="sidebar-menu">
-      <a href="feed.html" class="sidebar-item">
+      <a href="feed.html" class="sidebar-item" aria-label="Feed">
         <span class="sidebar-icon"><img src="./assets/home.png" alt="Feed"></span>
         <span>Feed</span>
       </a>
-      <a href="lidos.html" class="sidebar-item active">
-        <span class="sidebar-icon"><img src="./assets/lido.svg" alt="Lidos"></span>
+      <a href="lidos.html" class="sidebar-item active" aria-label="Lidos">
+        <span class="sidebar-icon"><img src="./assets/Lido.png" alt=""></span>
         <span>Lidos</span>
       </a>
-      <a href="lendo.html" class="sidebar-item">
+      <a href="lendo.html" class="sidebar-item" aria-label="Lendo">
         <span class="sidebar-icon"><img src="./assets/lendo.png" alt="Lendo"></span>
         <span>Lendo</span>
-      </a>
-      <a href="amigos.html" class="sidebar-item">
-        <span class="sidebar-icon"><img src="./assets/Amigos.png" alt="Amigos"></span>
-        <span>Amigos</span>
       </a>
     </nav>
 
     <div class="sidebar-bottom">
-      <button class="profile-button">
+      <button class="profile-button" id="logoutButton" type="button" aria-label="Sair da conta">
         <span>👤</span>
-        <span>Perfil</span>
+        <span id="profileName">Perfil</span>
       </button>
     </div>
   </aside>
@@ -127,6 +123,7 @@
     </div>
   </div>
 
+  <script src="auth.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

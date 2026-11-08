@@ -1,5 +1,15 @@
 const feed = document.querySelector(".feed");
 const activities = [];
+const pendingDeletes = new Set();
+const pendingReactions = new Set();
+const operationError = document.createElement("p");
+operationError.className = "auth-error";
+operationError.setAttribute("role", "alert");
+feed.before(operationError);
+
+function renderOperationError(error) {
+    operationError.textContent = error.message;
+}
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -23,15 +33,19 @@ function statusClass(status) {
 }
 
 function renderLoading() {
-    feed.innerHTML = '<div class="empty-state"><p>Carregando feed...</p></div>';
+    feed.innerHTML = `<div class="empty-state" role="status"><p>Carregando ${currentPage.title.toLowerCase()}...</p></div>`;
 }
 
-function renderError(error) {
-    feed.innerHTML = `<div class="empty-state"><h2>Não foi possível carregar o feed</h2><p>${escapeHtml(error.message)}</p></div>`;
+function renderError(error, retry = carregarFeed) {
+    feed.innerHTML = `<div class="empty-state" role="alert"><h2>Não foi possível carregar ${currentPage.title}</h2><p>${escapeHtml(error.message)}</p><button type="button" class="btn-primary retry-button">Tentar novamente</button></div>`;
+    feed.querySelector(".retry-button").addEventListener("click", () => retry());
 }
 
 function renderEmpty() {
-    feed.innerHTML = '<div class="empty-state"><h2>Nenhuma atividade encontrada</h2><p>Adicione um livro para começar.</p></div>';
+    const title = currentPage.status === "READ" ? "Você ainda não tem leituras lidas"
+        : currentPage.status === "READING" ? "Você ainda não tem leituras em andamento"
+        : "O Feed ainda está vazio";
+    feed.innerHTML = `<div class="empty-state"><h2>${title}</h2><p>Use Adicionar livro para registrar uma leitura.</p></div>`;
 }
 
 function gerarCapa(book) {
@@ -59,6 +73,7 @@ function criarCard(activity) {
         : "";
     const likeSelected = activity.currentUserReaction === "LIKE" ? "selected" : "";
     const dislikeSelected = activity.currentUserReaction === "DISLIKE" ? "selected" : "";
+    const reactionDisabled = pendingReactions.has(activity.id) ? "disabled" : "";
 
     card.innerHTML = `
         <div class="card-header">
@@ -70,7 +85,7 @@ function criarCard(activity) {
                 <button class="card-action" type="button" aria-label="Ações">⋮</button>
                 <div class="card-menu">
                     <button type="button" class="card-menu-item" data-action="alterar-status">Alterar status</button>
-                    <button type="button" class="card-menu-item danger" data-action="excluir">Excluir livro</button>
+                    <button type="button" class="card-menu-item danger" data-action="excluir">Excluir leitura</button>
                 </div>
             </div>` : ""}
         </div>
@@ -84,8 +99,8 @@ function criarCard(activity) {
             </div>
         </div>
         <div class="card-footer">
-            <button class="reaction-button ${likeSelected}" data-reaction="LIKE" type="button" aria-label="Curtir">👍 <span>${activity.likes}</span></button>
-            <button class="reaction-button ${dislikeSelected}" data-reaction="DISLIKE" type="button" aria-label="Não curtir">👎 <span>${activity.dislikes}</span></button>
+            <button class="reaction-button ${likeSelected}" data-reaction="LIKE" type="button" aria-label="Curtir" ${reactionDisabled}>👍 <span>${activity.likes}</span></button>
+            <button class="reaction-button ${dislikeSelected}" data-reaction="DISLIKE" type="button" aria-label="Não curtir" ${reactionDisabled}>👎 <span>${activity.dislikes}</span></button>
         </div>
     `;
 
@@ -102,31 +117,42 @@ function renderFeed() {
     activities.forEach(activity => feed.appendChild(criarCard(activity)));
 }
 
-async function carregarFeed(status = null) {
+async function carregarFeed(status = currentPage.status) {
     renderLoading();
     try {
         const params = new URLSearchParams();
         if (status) params.set("status", status);
-        const response = await apiRequest(`/feed?${params}`);
+        const endpoint = status ? "/feed/mine" : "/feed";
+        const response = await apiRequest(`${endpoint}?${params}`);
         activities.splice(0, activities.length, ...response);
         renderFeed();
     } catch (error) {
-        renderError(error);
+        renderError(error, () => carregarFeed(status));
     }
 }
 
 async function alternarReacao(activityId, type) {
-    const updated = await apiRequest(`/feed/${activityId}/reacao`, {
-        method: "POST",
-        body: JSON.stringify({ type })
-    });
-    const activity = activities.find(item => item.id === activityId);
-    if (activity) {
-        activity.likes = updated.likes;
-        activity.dislikes = updated.dislikes;
-        activity.currentUserReaction = updated.userReaction;
+    if (pendingReactions.has(activityId)) return;
+    pendingReactions.add(activityId);
+    operationError.textContent = "";
+    const buttons = () => feed.querySelectorAll(`[data-id="${activityId}"] .reaction-button`);
+    buttons().forEach(button => { button.disabled = true; });
+    try {
+        const updated = await apiRequest(`/feed/${activityId}/reacao`, {
+            method: "POST",
+            body: JSON.stringify({ type })
+        });
+        const activity = activities.find(item => item.id === activityId);
+        if (activity) {
+            activity.likes = updated.likes;
+            activity.dislikes = updated.dislikes;
+            activity.currentUserReaction = updated.userReaction;
+        }
+        renderFeed();
+    } finally {
+        pendingReactions.delete(activityId);
+        buttons().forEach(button => { button.disabled = false; });
     }
-    renderFeed();
 }
 
 const addBookButton = document.querySelector(".add-book-button");
@@ -134,15 +160,26 @@ const addBookOverlay = document.getElementById("addBookOverlay");
 const addBookClose = document.getElementById("addBookClose");
 const addBookCancel = document.getElementById("addBookCancel");
 const addBookForm = document.getElementById("addBookForm");
+const addBookSubmit = addBookForm.querySelector('button[type="submit"]');
+const addBookError = document.createElement("p");
+addBookError.className = "auth-error";
+addBookError.setAttribute("role", "alert");
+addBookForm.prepend(addBookError);
+document.getElementById("fieldTitulo").maxLength = 255;
+document.getElementById("fieldAutor").maxLength = 255;
+let pendingAdd = false;
 
 function abrirModal() {
+    addBookError.textContent = "";
     addBookOverlay.classList.add("open");
     document.getElementById("fieldTitulo").focus();
 }
 
 function fecharModal() {
+    if (pendingAdd) return;
     addBookOverlay.classList.remove("open");
     addBookForm.reset();
+    addBookButton.focus();
 }
 
 addBookButton.addEventListener("click", abrirModal);
@@ -154,11 +191,22 @@ addBookOverlay.addEventListener("click", event => {
 
 addBookForm.addEventListener("submit", async event => {
     event.preventDefault();
+    if (pendingAdd) return;
+    addBookError.textContent = "";
     const title = document.getElementById("fieldTitulo").value.trim();
     const author = document.getElementById("fieldAutor").value.trim();
-    const status = document.getElementById("fieldStatus").value === "lido" ? "READ" : "READING";
-    if (!title || !author) return;
+    const status = { lendo: "READING", lido: "READ" }[document.getElementById("fieldStatus").value];
+    if (!title || !author || title.length > 255 || author.length > 255 || !status) {
+        addBookError.textContent = "Informe título e autor com até 255 caracteres e escolha Lendo ou Lido.";
+        return;
+    }
+    if (!addBookForm.reportValidity()) return;
 
+    pendingAdd = true;
+    addBookForm.querySelectorAll("input, select, button").forEach(control => { control.disabled = true; });
+    addBookClose.disabled = true;
+    addBookSubmit.textContent = "Adicionando...";
+    let saved = false;
     try {
         const book = await apiRequest("/books", {
             method: "POST",
@@ -168,10 +216,18 @@ addBookForm.addEventListener("submit", async event => {
             method: "POST",
             body: JSON.stringify({ bookId: book.id, status })
         });
+        saved = true;
+    } catch (error) {
+        addBookError.textContent = error.message;
+    } finally {
+        pendingAdd = false;
+        addBookForm.querySelectorAll("input, select, button").forEach(control => { control.disabled = false; });
+        addBookClose.disabled = false;
+        addBookSubmit.textContent = "Adicionar";
+    }
+    if (saved) {
         fecharModal();
         await carregarFeed();
-    } catch (error) {
-        renderError(error);
     }
 });
 
@@ -183,36 +239,54 @@ const statusLendoBtn = document.getElementById("statusLendo");
 const statusLidoBtn = document.getElementById("statusLido");
 const ratingSection = document.getElementById("ratingSection");
 const starPicker = document.getElementById("starPicker");
+const clearRatingButton = document.createElement("button");
+clearRatingButton.type = "button";
+clearRatingButton.className = "btn-secondary";
+clearRatingButton.textContent = "Sem avaliação";
+ratingSection.appendChild(clearRatingButton);
+const statusError = document.createElement("p");
+statusError.className = "auth-error";
+statusError.setAttribute("role", "alert");
+statusOverlay.querySelector(".status-options").before(statusError);
 
 let idAtividadeEmEdicao = null;
 let statusSelecionado = null;
 let notaSelecionada = null;
+let statusOriginal = null;
+let pendingStatus = false;
 
 function atualizarVisualStatus() {
     statusLendoBtn.classList.toggle("selected", statusSelecionado === "READING");
     statusLidoBtn.classList.toggle("selected", statusSelecionado === "READ");
     ratingSection.classList.toggle("visible", statusSelecionado === "READ");
-    statusLendoBtn.disabled = statusSelecionado === "READ";
+    statusLendoBtn.disabled = statusOriginal === "READ" || pendingStatus;
 }
 
 function atualizarVisualEstrelas() {
     starPicker.querySelectorAll(".star-button").forEach(button => {
-        button.classList.toggle("active", notaSelecionada !== null && Number(button.dataset.value) <= notaSelecionada);
+        const value = Number(button.dataset.value);
+        button.classList.toggle("active", notaSelecionada !== null && value <= notaSelecionada);
+        button.setAttribute("aria-label", `${value} ${value === 1 ? "estrela" : "estrelas"}`);
+        button.setAttribute("aria-pressed", String(notaSelecionada === value));
     });
+    clearRatingButton.setAttribute("aria-pressed", String(notaSelecionada === null));
 }
 
 function abrirModalStatus(id) {
     const activity = activities.find(item => item.id === id);
     if (!activity) return;
     idAtividadeEmEdicao = id;
+    statusOriginal = activity.status;
     statusSelecionado = activity.status;
     notaSelecionada = activity.rating || null;
+    statusError.textContent = "";
     atualizarVisualStatus();
     atualizarVisualEstrelas();
     statusOverlay.classList.add("open");
 }
 
 function fecharModalStatus() {
+    if (pendingStatus) return;
     statusOverlay.classList.remove("open");
     idAtividadeEmEdicao = null;
 }
@@ -234,6 +308,11 @@ starPicker.addEventListener("click", event => {
     atualizarVisualEstrelas();
 });
 
+clearRatingButton.addEventListener("click", () => {
+    notaSelecionada = null;
+    atualizarVisualEstrelas();
+});
+
 statusClose.addEventListener("click", fecharModalStatus);
 statusCancel.addEventListener("click", fecharModalStatus);
 statusOverlay.addEventListener("click", event => {
@@ -241,7 +320,18 @@ statusOverlay.addEventListener("click", event => {
 });
 
 statusConfirm.addEventListener("click", async () => {
-    if (!idAtividadeEmEdicao) return;
+    if (pendingStatus || !idAtividadeEmEdicao) return;
+    statusError.textContent = "";
+    if (!["READING", "READ"].includes(statusSelecionado)
+            || (statusSelecionado === "READ" && notaSelecionada !== null
+                && (!Number.isInteger(notaSelecionada) || notaSelecionada < 1 || notaSelecionada > 5))) {
+        statusError.textContent = "Escolha um status e uma nota inteira de 1 a 5, ou deixe sem avaliação.";
+        return;
+    }
+    pendingStatus = true;
+    statusOverlay.querySelectorAll("button").forEach(button => { button.disabled = true; });
+    statusConfirm.textContent = "Salvando...";
+    let saved = false;
     try {
         await apiRequest(`/feed/${idAtividadeEmEdicao}`, {
             method: "PATCH",
@@ -250,10 +340,18 @@ statusConfirm.addEventListener("click", async () => {
             rating: statusSelecionado === "READ" ? notaSelecionada : null
             })
         });
+        saved = true;
+    } catch (error) {
+        statusError.textContent = error.message;
+    } finally {
+        pendingStatus = false;
+        statusOverlay.querySelectorAll("button").forEach(button => { button.disabled = false; });
+        statusConfirm.textContent = "Salvar";
+        atualizarVisualStatus();
+    }
+    if (saved) {
         fecharModalStatus();
         await carregarFeed();
-    } catch (error) {
-        renderError(error);
     }
 });
 
@@ -276,7 +374,7 @@ feed.addEventListener("click", async event => {
         try {
             await alternarReacao(reactionButton.closest(".feed-card").dataset.id, reactionButton.dataset.reaction);
         } catch (error) {
-            renderError(error);
+            renderOperationError(error);
         }
         return;
     }
@@ -289,11 +387,20 @@ feed.addEventListener("click", async event => {
     if (menuItem.dataset.action === "alterar-status") {
         abrirModalStatus(id);
     } else if (menuItem.dataset.action === "excluir") {
+        if (pendingDeletes.has(id)) return;
+        const activity = activities.find(item => item.id === id);
+        if (!window.confirm(`Excluir sua leitura de "${activity.book.title}"? O livro continuará no catálogo.`)) return;
+        pendingDeletes.add(id);
+        menuItem.disabled = true;
+        operationError.textContent = "";
         try {
             await apiRequest(`/feed/${id}`, { method: "DELETE" });
             await carregarFeed();
         } catch (error) {
-            renderError(error);
+            renderOperationError(error);
+        } finally {
+            pendingDeletes.delete(id);
+            menuItem.disabled = false;
         }
     }
 });
@@ -310,24 +417,37 @@ const pages = {
     "lendo.html": { title: "Lendo", status: "READING" }
 };
 
+const currentPage = pages[window.location.pathname.split("/").pop()] || pages["feed.html"];
+document.querySelector(".page-header h1").textContent = currentPage.title;
+document.title = `Uni4Read - ${currentPage.title}`;
 document.querySelectorAll(".sidebar-item").forEach(item => {
-    item.addEventListener("click", event => {
-        const href = item.getAttribute("href");
-        const page = pages[href];
-        if (!page) return;
-
-        event.preventDefault();
-        document.querySelector(".page-header h1").textContent = page.title;
-        document.title = `Uni4Read - ${page.title}`;
-        document.querySelectorAll(".sidebar-item").forEach(navItem => navItem.classList.remove("active"));
-        item.classList.add("active");
-        carregarFeed(page.status);
-    });
+    item.classList.toggle("active", pages[item.getAttribute("href")] === currentPage);
 });
 
-document.getElementById("logoutButton").addEventListener("click", () => window.uni4readAuth.logout());
-
-window.uni4readAuth.requireAuth().then(user => {
-    document.getElementById("profileName").textContent = user.name;
-    carregarFeed();
+const logoutButton = document.getElementById("logoutButton");
+logoutButton.addEventListener("click", async () => {
+    logoutButton.disabled = true;
+    try {
+        await window.uni4readAuth.logout();
+    } catch (error) {
+        renderOperationError(error);
+    } finally {
+        logoutButton.disabled = false;
+    }
 });
+
+async function iniciarPagina() {
+    addBookButton.disabled = true;
+    renderLoading();
+    try {
+        const user = await window.uni4readAuth.requireAuth();
+        document.getElementById("profileName").textContent = user.name;
+        addBookButton.disabled = false;
+        await carregarFeed();
+    } catch (error) {
+        console.error("Não foi possível iniciar a sessão", error);
+        renderError(error, iniciarPagina);
+    }
+}
+
+iniciarPagina();

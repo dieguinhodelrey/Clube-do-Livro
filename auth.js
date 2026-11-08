@@ -7,6 +7,13 @@ let accessToken = null;
 let currentUser = null;
 let refreshPromise = null;
 
+class HttpError extends Error {
+    constructor(message, status) {
+        super(message);
+        this.status = status;
+    }
+}
+
 function setSession(session) {
     accessToken = session.accessToken || accessToken;
     currentUser = session.user;
@@ -15,6 +22,13 @@ function setSession(session) {
 function clearSession() {
     accessToken = null;
     currentUser = null;
+}
+
+function expireSession() {
+    clearSession();
+    if (!window.location.pathname.endsWith("login.html")) {
+        window.location.href = "login.html";
+    }
 }
 
 async function parseError(response) {
@@ -34,7 +48,7 @@ async function refreshSession() {
             method: "POST",
             credentials: "include"
         }).then(async response => {
-            if (!response.ok) throw new Error(await parseError(response));
+            if (!response.ok) throw new HttpError(await parseError(response), response.status);
             const session = await response.json();
             setSession(session);
             return session;
@@ -62,15 +76,14 @@ async function apiRequest(path, options = {}, canRefresh = true) {
         try {
             await refreshSession();
             return apiRequest(path, options, false);
-        } catch {
-            clearSession();
-            if (!window.location.pathname.endsWith("login.html")) {
-                window.location.href = "login.html";
-            }
+        } catch (error) {
+            if (error.status === 401) expireSession();
+            throw error;
         }
     }
 
-    if (!response.ok) throw new Error(await parseError(response));
+    if (response.status === 401) expireSession();
+    if (!response.ok) throw new HttpError(await parseError(response), response.status);
     if (response.status === 204) return null;
     return response.json();
 }
@@ -80,10 +93,9 @@ async function requireAuth() {
     try {
         const session = await refreshSession();
         return session.user;
-    } catch {
-        clearSession();
-        window.location.href = "login.html";
-        throw new Error("Sessão expirada");
+    } catch (error) {
+        if (error.status === 401) expireSession();
+        throw error;
     }
 }
 
@@ -114,16 +126,14 @@ async function register(name, email, password) {
 }
 
 async function logout() {
-    try {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
+    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
             method: "POST",
             credentials: "include",
             headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
-        });
-    } finally {
-        clearSession();
-        window.location.href = "login.html";
-    }
+    });
+    if (!response.ok) throw new HttpError(await parseError(response), response.status);
+    clearSession();
+    window.location.href = "login.html";
 }
 
 window.uni4readAuth = {
