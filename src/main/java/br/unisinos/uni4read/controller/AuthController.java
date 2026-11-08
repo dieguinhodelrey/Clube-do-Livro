@@ -108,11 +108,13 @@ public class AuthController {
     }
 
     @org.springframework.web.bind.annotation.ExceptionHandler(InvalidRefreshTokenException.class)
-    ResponseEntity<Void> invalidRefreshToken(InvalidRefreshTokenException exception) {
+    ResponseEntity<ApiExceptionHandler.ApiError> invalidRefreshToken(InvalidRefreshTokenException exception) {
         return ResponseEntity.status(exception.getCauseException().getStatusCode())
                 .header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString())
                 .header(HttpHeaders.SET_COOKIE, clearLegacyRefreshCookie().toString())
-                .build();
+                .body(new ApiExceptionHandler.ApiError(
+                        exception.getCauseException().getStatusCode().value(),
+                        exception.getCauseException().getReason(), java.util.Map.of()));
     }
 
     private static class InvalidRefreshTokenException extends RuntimeException {

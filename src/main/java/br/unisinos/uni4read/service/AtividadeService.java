@@ -55,13 +55,21 @@ public class AtividadeService {
         return activities.stream().map(activity -> toResponse(activity, userId)).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<AtividadeFeedResponseDTO> listarMinhasLeituras(UUID userId, ReadingStatus status) {
+        List<FeedActivity> activities = status == null
+                ? feedActivityRepository.findAllByUserIdOrderByCreatedAtDesc(userId)
+                : feedActivityRepository.findAllByUserIdAndStatusOrderByCreatedAtDesc(userId, status);
+        return activities.stream().map(activity -> toResponse(activity, userId)).toList();
+    }
+
     @Transactional
     public AtividadeFeedResponseDTO registrarAtividade(CriarAtividadeRequestDTO request, UUID userId) {
         FeedActivity activity = new FeedActivity();
         activity.setUser(userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado")));
         activity.setBook(bookRepository.findById(request.bookId())
-                .orElseThrow(() -> new IllegalArgumentException("Livro nao encontrado")));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Livro não encontrado")));
         activity.setStatus(request.status());
         activity.setRating(null);
         FeedActivity savedActivity = feedActivityRepository.save(activity);
@@ -71,7 +79,7 @@ public class AtividadeService {
     @Transactional
     public AtividadeFeedResponseDTO atualizar(UUID activityId, AtualizarAtividadeRequestDTO request, UUID userId) {
         FeedActivity activity = feedActivityRepository.findById(activityId)
-                .orElseThrow(() -> new IllegalArgumentException("Atividade nao encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Leitura não encontrada"));
         if (!activity.getUser().getId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuario sem permissao para alterar esta atividade");
         }
@@ -86,6 +94,9 @@ public class AtividadeService {
         if (request.rating() != null && (request.rating() < 1 || request.rating() > 5)) {
             throw new IllegalArgumentException("A avaliacao deve estar entre 1 e 5");
         }
+        if (request.status() == ReadingStatus.READING && request.rating() != null) {
+            throw new IllegalArgumentException("Uma leitura em andamento não aceita avaliação");
+        }
         activity.setStatus(request.status());
         activity.setRating(request.status() == ReadingStatus.READ ? request.rating() : null);
         return toResponse(activity, userId);
@@ -94,7 +105,7 @@ public class AtividadeService {
     @Transactional
     public void excluir(UUID activityId, UUID userId) {
         FeedActivity activity = feedActivityRepository.findById(activityId)
-                .orElseThrow(() -> new IllegalArgumentException("Atividade nao encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Leitura não encontrada"));
         if (!activity.getUser().getId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuario sem permissao para excluir esta atividade");
         }

@@ -14,6 +14,7 @@ import br.unisinos.uni4read.dto.BookResponseDTO;
 import br.unisinos.uni4read.dto.CriarLivroRequestDTO;
 import br.unisinos.uni4read.entity.Book;
 import br.unisinos.uni4read.repository.BookRepository;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/books")
@@ -33,13 +34,17 @@ public class BookController {
     }
 
     @PostMapping
-    public ResponseEntity<BookResponseDTO> criar(@RequestBody CriarLivroRequestDTO request) {
-        Book book = bookRepository.findByTitleIgnoreCaseAndAuthorIgnoreCase(request.title(), request.author())
-                .orElseGet(Book::new);
-        book.setTitle(request.title());
-        book.setAuthor(request.author());
-        Book saved = bookRepository.save(book);
-        BookResponseDTO response = new BookResponseDTO(saved.getId(), saved.getTitle(), saved.getAuthor());
+    public ResponseEntity<BookResponseDTO> criar(@Valid @RequestBody CriarLivroRequestDTO request) {
+        String title = request.title().trim();
+        String author = request.author().trim();
+        Book book = bookRepository.findByTitleIgnoreCaseAndAuthorIgnoreCase(title, author)
+                .orElseGet(() -> {
+                    Book created = new Book();
+                    created.setTitle(title);
+                    created.setAuthor(author);
+                    return bookRepository.save(created);
+                });
+        BookResponseDTO response = new BookResponseDTO(book.getId(), book.getTitle(), book.getAuthor());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

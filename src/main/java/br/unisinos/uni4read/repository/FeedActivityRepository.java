@@ -13,4 +13,8 @@ public interface FeedActivityRepository extends JpaRepository<FeedActivity, UUID
 	List<FeedActivity> findAllByOrderByCreatedAtDesc();
 
 	List<FeedActivity> findAllByStatusOrderByCreatedAtDesc(ReadingStatus status);
+
+	List<FeedActivity> findAllByUserIdOrderByCreatedAtDesc(UUID userId);
+
+	List<FeedActivity> findAllByUserIdAndStatusOrderByCreatedAtDesc(UUID userId, ReadingStatus status);
 }

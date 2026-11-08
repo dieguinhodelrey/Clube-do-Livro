@@ -5,11 +5,13 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -36,6 +38,24 @@ public class ApiExceptionHandler {
         int status = exception.getStatusCode().value();
         return ResponseEntity.status(status)
                 .body(new ApiError(status, exception.getReason(), Map.of()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> invalidArgument(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest()
+                .body(new ApiError(400, exception.getMessage(), Map.of()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> malformedBody() {
+        return ResponseEntity.badRequest()
+                .body(new ApiError(400, "Corpo da requisição inválido", Map.of()));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> invalidParameter(MethodArgumentTypeMismatchException exception) {
+        return ResponseEntity.badRequest()
+                .body(new ApiError(400, "Parâmetro inválido", Map.of(exception.getName(), "Valor inválido")));
     }
 
     public record ApiError(int status, String message, Map<String, String> fields) {

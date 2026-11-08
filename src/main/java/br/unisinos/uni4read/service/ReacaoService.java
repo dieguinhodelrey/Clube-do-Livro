@@ -4,6 +4,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import br.unisinos.uni4read.dto.ReacaoDTO;
 import br.unisinos.uni4read.dto.ReacaoRequestDTO;
@@ -33,7 +35,7 @@ public class ReacaoService {
     @Transactional
     public ReacaoDTO alternar(UUID activityId, ReacaoRequestDTO request, UUID userId) {
         FeedActivity activity = feedActivityRepository.findById(activityId)
-                .orElseThrow(() -> new IllegalArgumentException("Atividade nao encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Leitura não encontrada"));
         userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado"));
 

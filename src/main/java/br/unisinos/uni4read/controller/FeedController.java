@@ -25,6 +25,7 @@ import br.unisinos.uni4read.dto.ReacaoRequestDTO;
 import br.unisinos.uni4read.service.AtividadeService;
 import br.unisinos.uni4read.service.ReacaoService;
 import br.unisinos.uni4read.entity.ReadingStatus;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/feed")
@@ -45,10 +46,17 @@ public class FeedController {
         return atividadeService.listarFeed(currentUser(authentication), status);
     }
 
+    @GetMapping("/mine")
+    public List<AtividadeFeedResponseDTO> listarMinhasLeituras(
+            Authentication authentication,
+            @RequestParam(required = false) ReadingStatus status) {
+        return atividadeService.listarMinhasLeituras(currentUser(authentication), status);
+    }
+
     @PatchMapping("/{id}")
     public AtividadeFeedResponseDTO atualizar(
             @PathVariable UUID id,
-            @RequestBody AtualizarAtividadeRequestDTO request,
+            @Valid @RequestBody AtualizarAtividadeRequestDTO request,
             Authentication authentication) {
         return atividadeService.atualizar(id, request, currentUser(authentication));
     }
@@ -63,7 +71,7 @@ public class FeedController {
 
     @PostMapping
     public ResponseEntity<AtividadeFeedResponseDTO> criarAtividade(
-            @RequestBody CriarAtividadeRequestDTO request,
+            @Valid @RequestBody CriarAtividadeRequestDTO request,
             Authentication authentication) {
         AtividadeFeedResponseDTO response = atividadeService.registrarAtividade(request, currentUser(authentication));
         return ResponseEntity.created(URI.create("/api/feed/" + response.id())).body(response);
@@ -72,7 +80,7 @@ public class FeedController {
     @PostMapping("/{id}/reacao")
     public ReacaoDTO alternarReacao(
             @PathVariable UUID id,
-            @RequestBody ReacaoRequestDTO request,
+            @Valid @RequestBody ReacaoRequestDTO request,
             Authentication authentication) {
         return reacaoService.alternar(id, request, currentUser(authentication));
     }

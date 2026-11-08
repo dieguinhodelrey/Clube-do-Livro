@@ -5,7 +5,7 @@
 No Windows, dentro desta pasta:
 
 ```powershell
-./mvnw.cmd spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
 No macOS, é necessário ter o Java 17 ou superior instalado. Se o comando `brew` não for encontrado, instale primeiro o [Homebrew](https://brew.sh/):
@@ -51,32 +51,18 @@ export JWT_SECRET='uma-chave-com-pelo-menos-32-caracteres'
 
 A API inicia em `http://localhost:8080`. O banco padrão é H2 em memória e é recriado a cada execução. Os dados seed incluem os usuários Alice e Bruno.
 
-## Contrato atual
+Sirva o frontend por HTTP na porta 5500. `FRONTEND_ORIGINS` configura as origens permitidas, separadas por vírgula; o padrão é `http://localhost:5500,http://127.0.0.1:5500`. Use o mesmo hostname no frontend e na API para preservar os cookies da sessão. O passo a passo está em [Como executar na wiki](https://github.com/dieguinhodelrey/Clube-do-Livro/wiki/Como-executar).
 
-- `GET /api/feed?userId={uuid}&status=READING|READ`: lista atividades.
-- `POST /api/feed`: cria atividade com `userId`, `bookId` e `status`.
-- `PATCH /api/feed/{id}`: altera com `userId`, `status` e `rating` opcional de 1 a 5.
-- `DELETE /api/feed/{id}?userId={uuid}`: exclui atividade do próprio usuário.
-- `POST /api/feed/{id}/reacao`: alterna `LIKE` ou `DISLIKE` para um `userId`.
-- `GET /api/books`: lista livros.
-- `POST /api/books`: cria ou reutiliza livro por título e autor.
+## Documentação
 
-Os enums enviados pela API são `READING`, `READ`, `LIKE` e `DISLIKE`.
+O contrato é documentado no [Guia da API na wiki](https://github.com/dieguinhodelrey/Clube-do-Livro/wiki/Guia-da-API), com rotas, autenticação, pedidos, respostas e erros. Feed e leituras usam a identidade do token, não um `userId` escolhido pelo cliente.
 
-### Autenticação
-
-- `POST /api/auth/register`: cria uma conta e inicia a sessão.
-- `POST /api/auth/login`: autentica e retorna um access token.
-- `POST /api/auth/refresh`: rotaciona o refresh token `HttpOnly`.
-- `GET /api/auth/me`: retorna o usuário autenticado.
-- `POST /api/auth/logout`: revoga a sessão atual.
-
-As rotas do feed usam o usuário do token JWT e não aceitam mais `userId` enviado pelo cliente. Em desenvolvimento, os usuários seed são `alice@example.com` e `bruno@example.com`, ambos com a senha `password`. Defina `JWT_SECRET` com pelo menos 32 bytes fora do ambiente de desenvolvimento.
+O [escopo](https://github.com/dieguinhodelrey/Clube-do-Livro/wiki/Escopo-da-entrega), os [requisitos e regras](https://github.com/dieguinhodelrey/Clube-do-Livro/wiki/Requisitos-e-regras) e as [histórias de usuário](https://github.com/dieguinhodelrey/Clube-do-Livro/wiki/Hist%C3%B3rias-de-usu%C3%A1rio) ficam na wiki oficial, sem cópias paralelas nesta pasta.
 
 ## Testes
 
+Os testes cobrem autenticação e cookies, catálogo, Feed, listas pessoais, conclusão e avaliação, exclusão e reações com duas contas. Na configuração padrão, usam H2 no processo de testes, separado da aplicação em execução. As contas de teste de autenticação são criadas e removidas em cada cenário; os demais dados de integração são desfeitos por transações.
+
 ```powershell
-./mvnw.cmd test
+.\mvnw.cmd test
 ```
-# Clube-do-Livro
-# Clube-do-Livro
